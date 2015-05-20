@@ -23,7 +23,10 @@ public class Chunk : MonoBehaviour {
     public SmoothVoxelBuilder BuilderInstance;
     public IPageController pageController;
     public List<BlockChange> EditQueue;
+    public GameObject grassPrefab;
     public int disappearDistance = VoxelSettings.radius;
+    public int maxGrassDistance = 3;
+    public int grassPerMeter = 1;
     public int size = 0;
     public int vertSize = 0;
     public int triSize = 0;
@@ -44,6 +47,10 @@ public class Chunk : MonoBehaviour {
     bool enableTest = false;
     bool generated = false;
     bool rendered = false;
+    bool grassEnabled = false;
+    bool destroyed = false;
+
+    List<GameObject> grassList = new List<GameObject>();
 
 	// Use this for initialization
 	void Start () {
@@ -53,75 +60,112 @@ public class Chunk : MonoBehaviour {
 	
 	// Update is called once per frame
 	void Update () {
-        if (Vector3.Distance(TerrainController.Instance.newPlayerChunkPos, ChunkPosition) > disappearDistance)
-        {
-            Destroy(gameObject, 1);
-            Loom.QueueAsyncTask(TerrainController.WorldThreadName, () =>
-            {
-                TerrainController.Chunks.Remove(ChunkPosition);
-                Close();
-            });
-            return;
-        }
 
-        if (EditQueue.Count > 0)
+        if (rendered && !destroyed)
         {
-            List<BlockChange> EditQueueCopy = new List<BlockChange>(EditQueue);
-            EditQueue.Clear();
-            Loom.QueueAsyncTask(TerrainController.setBlockThreadName, () =>
+            if (Vector3.Distance(TerrainController.Instance.newPlayerChunkPos, ChunkPosition) > disappearDistance)
             {
-
-                lock (lockObj)
+                destroyed = true;
+                Destroy(gameObject, 1);
+                Loom.QueueAsyncTask(TerrainController.WorldThreadName, () =>
                 {
-                    List<Vector3Int> updateChunks = new List<Vector3Int>();
-                    foreach (BlockChange change in EditQueueCopy)
+                    TerrainController.Chunks.Remove(ChunkPosition);
+                    Close();
+                });
+                return;
+            }
+            if (!grassEnabled && Vector3.Distance(TerrainController.Instance.newPlayerChunkPos, ChunkPosition) < maxGrassDistance)
+            {
+                grassEnabled = true;
+                SpawnGrass();
+            }
+            if (grassEnabled && Vector3.Distance(TerrainController.Instance.newPlayerChunkPos, ChunkPosition) > maxGrassDistance)
+            {
+                grassEnabled = false;
+                for (int i = 0; i < grassList.Count; i++)
+                    Destroy(grassList[i]);
+                grassList.Clear();
+            }
+
+            if (EditQueue.Count > 0)
+            {
+                List<BlockChange> EditQueueCopy = new List<BlockChange>(EditQueue);
+                EditQueue.Clear();
+                Loom.QueueAsyncTask(TerrainController.setBlockThreadName, () =>
+                {
+
+                    lock (lockObj)
                     {
-                        Vector3Int position = change.position;
-                        byte type = change.type;
-                        if (position.x == 0)
+                        List<Vector3Int> updateChunks = new List<Vector3Int>();
+                        foreach (BlockChange change in EditQueueCopy)
                         {
-                            if (!updateChunks.Contains(new Vector3Int(ChunkPosition.x - 1, ChunkPosition.y, ChunkPosition.z)))
-                                updateChunks.Add(new Vector3Int(ChunkPosition.x - 1, ChunkPosition.y, ChunkPosition.z));
-                        }
-                        if (position.x == VoxelSettings.ChunkSizeX - 1)
-                        {
-                            if (!updateChunks.Contains(new Vector3Int(ChunkPosition.x + 1, ChunkPosition.y, ChunkPosition.z)))
-                                updateChunks.Add(new Vector3Int(ChunkPosition.x + 1, ChunkPosition.y, ChunkPosition.z));
-                        }
+                            Vector3Int position = change.position;
+                            byte type = change.type;
+                            if (position.x == 0)
+                            {
+                                if (!updateChunks.Contains(new Vector3Int(ChunkPosition.x - 1, ChunkPosition.y, ChunkPosition.z)))
+                                    updateChunks.Add(new Vector3Int(ChunkPosition.x - 1, ChunkPosition.y, ChunkPosition.z));
+                            }
+                            if (position.x == VoxelSettings.ChunkSizeX - 1)
+                            {
+                                if (!updateChunks.Contains(new Vector3Int(ChunkPosition.x + 1, ChunkPosition.y, ChunkPosition.z)))
+                                    updateChunks.Add(new Vector3Int(ChunkPosition.x + 1, ChunkPosition.y, ChunkPosition.z));
+                            }
 
-                        if (position.y == 0)
-                        {
-                            if (!updateChunks.Contains(new Vector3Int(ChunkPosition.x, ChunkPosition.y - 1, ChunkPosition.z)))
-                                updateChunks.Add(new Vector3Int(ChunkPosition.x, ChunkPosition.y - 1, ChunkPosition.z));
+                            if (position.y == 0)
+                            {
+                                if (!updateChunks.Contains(new Vector3Int(ChunkPosition.x, ChunkPosition.y - 1, ChunkPosition.z)))
+                                    updateChunks.Add(new Vector3Int(ChunkPosition.x, ChunkPosition.y - 1, ChunkPosition.z));
 
-                        }
-                        if (position.y == VoxelSettings.ChunkSizeY - 1)
-                        {
-                            if (!updateChunks.Contains(new Vector3Int(ChunkPosition.x, ChunkPosition.y + 1, ChunkPosition.z)))
-                                updateChunks.Add(new Vector3Int(ChunkPosition.x, ChunkPosition.y + 1, ChunkPosition.z));
-                        }
+                            }
+                            if (position.y == VoxelSettings.ChunkSizeY - 1)
+                            {
+                                if (!updateChunks.Contains(new Vector3Int(ChunkPosition.x, ChunkPosition.y + 1, ChunkPosition.z)))
+                                    updateChunks.Add(new Vector3Int(ChunkPosition.x, ChunkPosition.y + 1, ChunkPosition.z));
+                            }
 
-                        if (position.z == 0)
-                        {
-                            if (!updateChunks.Contains(new Vector3Int(ChunkPosition.x, ChunkPosition.y, ChunkPosition.z - 1)))
-                                updateChunks.Add(new Vector3Int(ChunkPosition.x, ChunkPosition.y, ChunkPosition.z - 1));
+                            if (position.z == 0)
+                            {
+                                if (!updateChunks.Contains(new Vector3Int(ChunkPosition.x, ChunkPosition.y, ChunkPosition.z - 1)))
+                                    updateChunks.Add(new Vector3Int(ChunkPosition.x, ChunkPosition.y, ChunkPosition.z - 1));
+                            }
+                            if (position.z == VoxelSettings.ChunkSizeZ - 1)
+                            {
+                                if (!updateChunks.Contains(new Vector3Int(ChunkPosition.x, ChunkPosition.y, ChunkPosition.z + 1)))
+                                    updateChunks.Add(new Vector3Int(ChunkPosition.x, ChunkPosition.y, ChunkPosition.z + 1));
+                            }
+                            builder.SetBlock(position.x, position.y, position.z, new Block(type));
                         }
-                        if (position.z == VoxelSettings.ChunkSizeZ - 1)
+                        Render(true);
+                        foreach (Vector3Int chunk in updateChunks)
                         {
-                            if (!updateChunks.Contains(new Vector3Int(ChunkPosition.x, ChunkPosition.y, ChunkPosition.z + 1)))
-                                updateChunks.Add(new Vector3Int(ChunkPosition.x, ChunkPosition.y, ChunkPosition.z + 1));
+                            pageController.UpdateChunk(chunk.x, chunk.y, chunk.z);
                         }
-                        builder.SetBlock(position.x, position.y, position.z, new Block(type));
                     }
-                    Render(true);
-                    foreach (Vector3Int chunk in updateChunks)
-                    {
-                        pageController.UpdateChunk(chunk.x, chunk.y, chunk.z);
-                    }
-                }
-            });
+                });
+            }
         }
 	}
+
+    public void SpawnGrass()
+    {
+        Vector3[] surfacePoints = BuilderInstance.GetSurfacePoints();
+        System.Random rand = new System.Random(VoxelSettings.seed);
+        int maxGrass = Mathf.RoundToInt((float)grassPerMeter / (float)VoxelSettings.voxelsPerMeter);
+        for (int i = 0; i < surfacePoints.Length; i++)
+        {
+            for (int j = 0; j < maxGrass; j++)
+            {
+                Vector3 pos = new Vector3((float)rand.Next(-100, 100) / 10f / VoxelSettings.voxelsPerMeter, 0, (float)rand.Next(-100, 100) / 10f / VoxelSettings.voxelsPerMeter);
+                GameObject grassObj = (GameObject)Instantiate(grassPrefab, pos, Quaternion.identity);
+                grassObj.transform.parent = transform;
+                grassList.Add(grassObj);
+            }
+        }
+        Debug.LogFormat("surface points: {0}", surfacePoints.Length);
+        Debug.LogFormat("Grass per point: {0}", maxGrass);
+        Debug.LogFormat("Spawned {0} grass.", grassList.Count);
+    }
 
     public void EditNextFrame(BlockChange[] changes)
     {

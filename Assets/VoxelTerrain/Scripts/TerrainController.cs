@@ -10,6 +10,7 @@ public class TerrainController : MonoBehaviour, IPageController
     public static string setBlockThreadName = "SetBlockThread";
     public static bool ThereIsAnError = false;
     public static TerrainController Instance;
+    public GameObject grassPrefab;
     public Texture2D textureAtlas;
     public Rect[] AtlasUvs;
     public Material chunkMaterial;
@@ -77,6 +78,11 @@ public class TerrainController : MonoBehaviour, IPageController
         if (chunksInQueue > 0)
             GameManager.Status = string.Format("Generating chunk {0}/{1}.", chunksGenerated, chunksInQueue);
 	}
+
+    public void SpawnGrass()
+    {
+
+    }
 
     public static void Init()
     {
@@ -506,6 +512,7 @@ public class TerrainController : MonoBehaviour, IPageController
         {
             Chunk chunk = ((GameObject)Instantiate(chunkPrefab)).AddComponent<Chunk>();
             chunk.transform.parent = transform;
+            chunk.grassPrefab = grassPrefab;
             chunk.name = string.Format("Chunk_{0}.{1}.{2}", location.x, location.y, location.z);
             chunk.Init(new Vector3Int(location.x, location.y, location.z), this);
             Chunks.Add(new Vector3Int(location.x, location.y, location.z), chunk);

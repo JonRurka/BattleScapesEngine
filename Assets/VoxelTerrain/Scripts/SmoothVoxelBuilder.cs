@@ -33,6 +33,8 @@ public class SmoothVoxelBuilder : IVoxelBuilder {
     public Neighbor[] neighbors;
     public bool Initialized;
     public bool deactivated;
+    public Dictionary<Vector2Int ,Vector3> SurfacePoints;
+    #region edgeTable
     static int[] edgeTable = new int[256]
     {0x0 , 0x109, 0x203, 0x30a, 0x406, 0x50f, 0x605, 0x70c,
     0x80c, 0x905, 0xa0f, 0xb06, 0xc0a, 0xd03, 0xe09, 0xf00,
@@ -66,6 +68,8 @@ public class SmoothVoxelBuilder : IVoxelBuilder {
     0x69c, 0x795, 0x49f, 0x596, 0x29a, 0x393, 0x99 , 0x190,
     0xf00, 0xe09, 0xd03, 0xc0a, 0xb06, 0xa0f, 0x905, 0x80c,
     0x70c, 0x605, 0x50f, 0x406, 0x30a, 0x203, 0x109, 0x0};
+    #endregion
+    #region triTable
     static int[][] triTable = new int[256][]
     {
         new int[16]{-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
@@ -324,6 +328,7 @@ public class SmoothVoxelBuilder : IVoxelBuilder {
         new int[16]{0, 9, 1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
         new int[16]{0, 3, 8, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
         new int[16]{-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}};
+    #endregion
     static Vector3Int[] offsets = new Vector3Int[8]
     {
         new Vector3Int(0, 0, 1),
@@ -667,9 +672,18 @@ public class SmoothVoxelBuilder : IVoxelBuilder {
         {
             float surfaceHeight = GetSurfaceHeight(LocalPosition.x, LocalPosition.z) + VoxelSettings.groundOffset;
             result = surfaceHeight - globalLocation.y;
+            bool surface = (result < 1 && result > -1);
+
 
             if (enableCaves && Noise(caveModule, globalLocation.x, globalLocation.y, globalLocation.z, 16.0 * VoxelsPerMeter, 17.0, 1.0) > caveDensity)
+            {
                 result = 0;
+                surface = false;
+            }
+
+            if (surface && !SurfacePoints.ContainsKey(new Vector2Int(globalLocation.x, globalLocation.z)))
+                SurfacePoints.Add(new Vector2Int(globalLocation.x, globalLocation.z), VoxelConversions.VoxelToWorld(globalLocation));
+                
         }
         catch (Exception e)
         {
@@ -677,6 +691,11 @@ public class SmoothVoxelBuilder : IVoxelBuilder {
                 e.Message, globalLocation.x, globalLocation.z, LocalPosition.x, SurfaceData.GetLength(0), LocalPosition.z, SurfaceData.GetLength(1)), e);
         }
         return result;
+    }
+
+    public Vector3[] GetSurfacePoints()
+    {
+        return new List<Vector3>(SurfacePoints.Values).ToArray();
     }
 
     public void MarkAsSet(int _x, int _y, int _z)
@@ -868,6 +887,7 @@ public class SmoothVoxelBuilder : IVoxelBuilder {
             new Vector3(sideLength,sideLength,0),
             new Vector3(0,sideLength,0),
         };
+        SurfacePoints = new Dictionary<Vector2Int, Vector3>();
         AllocateBlockArray(ChunkSizeX, ChunkSizeY, ChunkSizeZ);
         SetSurroundingChunks();
         Initialized = true;

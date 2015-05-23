@@ -30,6 +30,7 @@ public class Chunk : MonoBehaviour {
     public int size = 0;
     public int vertSize = 0;
     public int triSize = 0;
+    public List<Vector3Int> Surface; 
 
     public bool Generated {
         get { return generated; }
@@ -56,6 +57,7 @@ public class Chunk : MonoBehaviour {
 	void Start () {
         EditQueue = new List<BlockChange>();
         lockObj = new object();
+        Surface = new List<Vector3Int>();
 	}
 	
 	// Update is called once per frame
@@ -74,7 +76,7 @@ public class Chunk : MonoBehaviour {
                 });
                 return;
             }
-            if (!grassEnabled && Vector3.Distance(TerrainController.Instance.newPlayerChunkPos, ChunkPosition) < maxGrassDistance)
+            /*if (!grassEnabled && Vector3.Distance(TerrainController.Instance.newPlayerChunkPos, ChunkPosition) < maxGrassDistance)
             {
                 grassEnabled = true;
                 SpawnGrass();
@@ -85,7 +87,7 @@ public class Chunk : MonoBehaviour {
                 for (int i = 0; i < grassList.Count; i++)
                     Destroy(grassList[i]);
                 grassList.Clear();
-            }
+            }*/
 
             if (EditQueue.Count > 0)
             {
@@ -149,18 +151,19 @@ public class Chunk : MonoBehaviour {
 
     public void SpawnGrass()
     {
-        Vector3[] surfacePoints = BuilderInstance.GetSurfacePoints();
+        Vector3Int[] surfacePoints = BuilderInstance.GetSurfacePoints();
         System.Random rand = new System.Random(VoxelSettings.seed);
         int maxGrass = Mathf.RoundToInt((float)grassPerMeter / (float)VoxelSettings.voxelsPerMeter);
         for (int i = 0; i < surfacePoints.Length; i++)
         {
-            for (int j = 0; j < maxGrass; j++)
+
+            /*for (int j = 0; j < maxGrass; j++)
             {
-                Vector3 pos = new Vector3((float)rand.Next(-100, 100) / 10f / VoxelSettings.voxelsPerMeter, 0, (float)rand.Next(-100, 100) / 10f / VoxelSettings.voxelsPerMeter);
-                GameObject grassObj = (GameObject)Instantiate(grassPrefab, pos, Quaternion.identity);
-                grassObj.transform.parent = transform;
-                grassList.Add(grassObj);
-            }
+                //Vector3 pos = new Vector3((float)rand.Next(-100, 100) / 10f / VoxelSettings.voxelsPerMeter, 0, (float)rand.Next(-100, 100) / 10f / VoxelSettings.voxelsPerMeter);
+                //GameObject grassObj = (GameObject)Instantiate(grassPrefab, pos, Quaternion.identity);
+                //grassObj.transform.parent = transform;
+                //grassList.Add(grassObj);
+            }*/
         }
         Debug.LogFormat("surface points: {0}", surfacePoints.Length);
         Debug.LogFormat("Grass per point: {0}", maxGrass);
@@ -273,6 +276,9 @@ public class Chunk : MonoBehaviour {
                 meshData.vertices = null;
                 meshData.triangles = null;
                 meshData.UVs = null;
+
+                if (!rendered)
+                    Surface = new List<Vector3Int>(BuilderInstance.GetSurfacePoints());
                 
                 rendered = true;
             }

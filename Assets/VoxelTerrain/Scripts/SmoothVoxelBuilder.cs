@@ -33,7 +33,7 @@ public class SmoothVoxelBuilder : IVoxelBuilder {
     public Neighbor[] neighbors;
     public bool Initialized;
     public bool deactivated;
-    public Dictionary<Vector2Int ,Vector3> SurfacePoints;
+    public Dictionary<Vector2Int ,Vector3Int> SurfacePoints;
     #region edgeTable
     static int[] edgeTable = new int[256]
     {0x0 , 0x109, 0x203, 0x30a, 0x406, 0x50f, 0x605, 0x70c,
@@ -674,15 +674,16 @@ public class SmoothVoxelBuilder : IVoxelBuilder {
             result = surfaceHeight - globalLocation.y;
             bool surface = (result < 1 && result > -1);
 
-
-            if (enableCaves && Noise(caveModule, globalLocation.x, globalLocation.y, globalLocation.z, 16.0 * VoxelsPerMeter, 17.0, 1.0) > caveDensity)
+            float noiseVal = Noise(caveModule, globalLocation.x, globalLocation.y, globalLocation.z, 16.0*VoxelsPerMeter,
+                17.0, 1.0);
+            if (enableCaves && noiseVal > caveDensity)
             {
-                result = 0;
+                result = result - noiseVal;
                 surface = false;
             }
 
             if (surface && !SurfacePoints.ContainsKey(new Vector2Int(globalLocation.x, globalLocation.z)))
-                SurfacePoints.Add(new Vector2Int(globalLocation.x, globalLocation.z), VoxelConversions.VoxelToWorld(globalLocation));
+                SurfacePoints.Add(new Vector2Int(globalLocation.x, globalLocation.z), globalLocation);
                 
         }
         catch (Exception e)
@@ -693,9 +694,9 @@ public class SmoothVoxelBuilder : IVoxelBuilder {
         return result;
     }
 
-    public Vector3[] GetSurfacePoints()
+    public Vector3Int[] GetSurfacePoints()
     {
-        return new List<Vector3>(SurfacePoints.Values).ToArray();
+        return new List<Vector3Int>(SurfacePoints.Values).ToArray();
     }
 
     public void MarkAsSet(int _x, int _y, int _z)

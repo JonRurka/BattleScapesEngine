@@ -2,41 +2,35 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Security.Cryptography.X509Certificates;
 using LibNoise;
 
-public class TerrainController : MonoBehaviour, IPageController
+public class RTSterrainControll : MonoBehaviour, IPageController
 {
     public static string WorldThreadName = "GenerationThread";
     public static string setBlockThreadName = "SetBlockThread";
     public static string GrassThreadName = "GrassThread";
     public static bool ThereIsAnError = false;
-    public static TerrainController Instance;
+    public static RTSterrainControll Instance;
     public GameObject grassPrefab;
     public Texture2D textureAtlas;
     public Rect[] AtlasUvs;
     public Material chunkMaterial;
     public int seed = 0;
-    public Vector3Int newPlayerChunkPos;
-    public Vector3Int newPlayerVoxelPos;
+    public Vector3Int newCameraChunkPos;
+    public Vector3Int newCameraVoxelPos;
     public int chunksInQueue;
     public int chunksGenerated;
     public int VoxelSize;
     public int MeshSize;
-    public int maxGrassDistance = 30;
-
-    public delegate void RenderComplete();
-    public static event RenderComplete OnRenderComplete;
-
 
     public static Dictionary<byte, BlockType> blockTypes = new Dictionary<byte, BlockType>();
 
     // Temparary simple 3D array. Will use dictionary when I switch over to unlimited terrain gen.
     public static SafeDictionary<Vector3Int, Chunk> Chunks = new SafeDictionary<Vector3Int, Chunk>();
 
-    public SafeDictionary<Vector2Int, GameObject>  grassObj = new SafeDictionary<Vector2Int, GameObject>();
+    public SafeDictionary<Vector2Int, GameObject> grassObj = new SafeDictionary<Vector2Int, GameObject>();
 
-    public GameObject player;
+    public GameObject cameraObj;
     public GameObject chunkPrefab;
     public Texture2D[] AllCubeTextures;
     public BlockType[] BlocksArray;
@@ -44,8 +38,6 @@ public class TerrainController : MonoBehaviour, IPageController
     private Vector3Int _oldPlayerVoxelPos = new Vector3Int(500, 500, 500);
 
     List<Vector3Int> _tmpChunkList = new List<Vector3Int>();
-
-
 
     private bool _generating = false;
     private bool _spawningGrass = true;
@@ -63,25 +55,20 @@ public class TerrainController : MonoBehaviour, IPageController
         }
     }
 
-	// Use this for initialization
-	void Start () {
-        
-	}
-	
-	// Update is called once per frame
-	void Update () {
-        if (player != null)
+    // Use this for initialization
+    void Start()
+    {
+
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        if (cameraObj != null)
         {
-            newPlayerVoxelPos = VoxelConversions.WorldToVoxel(player.transform.position);
-            newPlayerChunkPos = VoxelConversions.VoxelToChunk(newPlayerVoxelPos);
+            newCameraVoxelPos = VoxelConversions.WorldToVoxel(cameraObj.transform.position);
+            newCameraChunkPos = VoxelConversions.VoxelToChunk(newCameraVoxelPos);
             //Debug.Log(generateArroundChunk + ", " + newPlayerChunkPos + ", " + Vector3.Distance(generateArroundChunk, newPlayerChunkPos));
-            if (Vector3.Distance(_generateArroundChunk, newPlayerChunkPos) > 0 && !_generating)
-            {
-                // generate around point.
-                //Debug.Log("Debug filling " + newPlayerChunkPos + ".");
-                _generateArroundChunk = newPlayerChunkPos;
-                GenerateSpherical(_generateArroundChunk, null);
-            }
 
             /*if (Vector3.Distance(_oldPlayerVoxelPos, newPlayerVoxelPos) > 2)
             {
@@ -90,11 +77,11 @@ public class TerrainController : MonoBehaviour, IPageController
                 SpawnGrass();
             }*/
         }
-        
+
         if (chunksInQueue > 0)
             GameManager.Status = string.Format("Generating chunk {0}/{1}.", chunksGenerated, chunksInQueue);
-	}
-
+    }
+    /*
     public void SpawnGrass()
     {
         int xMin = newPlayerVoxelPos.x - maxGrassDistance;
@@ -106,7 +93,7 @@ public class TerrainController : MonoBehaviour, IPageController
         int zMin = newPlayerVoxelPos.z - maxGrassDistance;
         int zMax = newPlayerVoxelPos.z + maxGrassDistance;
 
-        Loom.QueueAsyncTask(GrassThreadName,() =>
+        Loom.QueueAsyncTask(GrassThreadName, () =>
         {
             List<Vector3Int> grass = new List<Vector3Int>();
             for (int x = xMin; x < xMax; x++)
@@ -158,7 +145,7 @@ public class TerrainController : MonoBehaviour, IPageController
             });
         });
     }
-
+    */
     public static void Init()
     {
         Instance.init();
@@ -180,11 +167,8 @@ public class TerrainController : MonoBehaviour, IPageController
             VoxelSettings.seed = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
         else
             VoxelSettings.seed = seed;
-        //TestSmooth();
-        //SpawnChunksLinear();
         GameManager.Status = "Loading...";
-        //Action action = new Action(OnRenderComplete);
-        GenerateSpherical(_generateArroundChunk, null);
+        GenerateLinearChunks();
     }
 
     public void TestSmooth()
@@ -203,9 +187,40 @@ public class TerrainController : MonoBehaviour, IPageController
             Loom.QueueOnMainThread(() =>
             {
                 SpawnChunks(chunkPositions);
-                GenerateChunks(chunkPositions, onComplete);
+                GenerateChunks(chunkPositions, null);
             });
         });
+    }
+
+    public void GenerateLinearChunks()
+    {
+        Loom.QueueAsyncTask(WorldThreadName, () =>
+        {
+            Vector3Int[] chunkPositions = GetLinearChunkLocations();
+            chunksInQueue = chunkPositions.Length;
+            Loom.QueueOnMainThread(() =>
+            {
+                SpawnChunks(chunkPositions);
+                GenerateChunks(chunkPositions, null);
+            });
+        });
+    }
+
+    private Vector3Int[] GetLinearChunkLocations()
+    {
+        List<Vector3Int> chunksInCube = new List<Vector3Int>();
+        for (int x = 0; x < VoxelSettings.maxChunksX; x++)
+        {
+            for (int z = 0; z < VoxelSettings.maxChunksZ; z++)
+            {
+                for (int y = VoxelSettings.maxChunksY_P; y >= 0; y--)
+                {
+                    if (!BuilderExists(x, y, z) && !chunksInCube.Contains(new Vector3Int(x, y, z)))
+                        chunksInCube.Add(new Vector3Int(x, y, z));
+                }
+            }
+        }
+        return chunksInCube.ToArray();
     }
 
     public Vector3Int[] GetChunkLocationsAroundPoint(Vector3Int center)
@@ -232,7 +247,7 @@ public class TerrainController : MonoBehaviour, IPageController
     {
         SpawnChunkFeild();
 
-        Loom.QueueAsyncTask(WorldThreadName, () => 
+        Loom.QueueAsyncTask(WorldThreadName, () =>
         {
             /*Chunks[1, 0, 0].DebugFill(1);
             SafeDebug.Log("Filling 1, 0.");
@@ -277,7 +292,7 @@ public class TerrainController : MonoBehaviour, IPageController
             Loom.QueueOnMainThread(() =>
             {
                 _generating = false;
-                OnRenderComplete();
+                //OnRenderComplete();
             });
         });
     }
@@ -336,7 +351,7 @@ public class TerrainController : MonoBehaviour, IPageController
         if (Chunks.ContainsKey(new Vector3Int(x, y, z)))
         {
             return (Chunks[new Vector3Int(x, y, z)] != null);
-        } 
+        }
         return false;
     }
 
@@ -415,7 +430,7 @@ public class TerrainController : MonoBehaviour, IPageController
         watch.Start();
         Loom.AddAsyncThread("Explosion");
         Loom.QueueAsyncTask("Explosion", () =>
-        {        
+        {
             Dictionary<Vector3Int, List<Chunk.BlockChange>> changes = new Dictionary<Vector3Int, List<Chunk.BlockChange>>();
             Vector3Int voxelPos = VoxelConversions.WorldToVoxel(postion);
             for (int x = voxelPos.x - radius; x <= voxelPos.x + radius; x++)
@@ -513,7 +528,7 @@ public class TerrainController : MonoBehaviour, IPageController
 
     public void ChangeBlock(Vector3Int[] voxels, byte type)
     {
-        foreach(Vector3Int block in voxels)
+        foreach (Vector3Int block in voxels)
         {
             Vector3Int chunk = VoxelConversions.VoxelToChunk(block);
             Vector3Int localVoxel = VoxelConversions.GlobalVoxToLocalChunkVoxCoord(chunk, block);

@@ -2,39 +2,11 @@
 using System.Collections;
 
 public static class VoxelConversions {
-    public static Vector3Int ChunkCoordToSuperCoord(Vector3Int location) {
-        int x = Mathf.RoundToInt(location.x / VoxelSettings.maxChunksX) + Negative1IfNegative(location.x, 0);
-        int y = Mathf.RoundToInt(location.y / VoxelSettings.maxChunksY_M) + Negative1IfNegative(location.y, 0);
-        int z = Mathf.RoundToInt(location.z / VoxelSettings.maxChunksZ) + Negative1IfNegative(location.z, 0);
-        return new Vector3Int(x, y, z);
-    }
-
-    public static Vector3Int SuperCoordToChunkCoord(Vector3Int location) {
-        int x = location.x * VoxelSettings.maxChunksX;
-        int y = location.y * VoxelSettings.maxChunksY_M;
-        int z = location.z * VoxelSettings.maxChunksZ;
-        return new Vector3Int(x, y, z);
-    }
-
-    public static Vector3 SuperChunkCoordToWorldPos(Vector3Int location) {
-        float x = location.x * ((VoxelSettings.ChunkSizeX / VoxelSettings.voxelsPerMeter) * VoxelSettings.maxChunksX) - VoxelSettings.half;
-        float y = location.y * ((VoxelSettings.ChunkSizeY / VoxelSettings.voxelsPerMeter) * VoxelSettings.maxChunksY_M) - VoxelSettings.half;
-        float z = location.z * ((VoxelSettings.ChunkSizeZ / VoxelSettings.voxelsPerMeter) * VoxelSettings.maxChunksZ) - VoxelSettings.half;
-        return new Vector3(x, y, z);
-    }
-
-    public static Vector3Int WorldPosToSuperChunkCoord(Vector3 location) {
-        int x = Mathf.RoundToInt((location.x - (VoxelSettings.MeterSizeX * VoxelSettings.maxChunksX / 2 + VoxelSettings.half)) / ((VoxelSettings.ChunkSizeX / VoxelSettings.voxelsPerMeter) * VoxelSettings.maxChunksX));
-        int y = Mathf.RoundToInt((location.y - (VoxelSettings.MeterSizeY * VoxelSettings.maxChunksY_M / 2 + VoxelSettings.half)) / ((VoxelSettings.ChunkSizeY / VoxelSettings.voxelsPerMeter) * VoxelSettings.maxChunksY_M));
-        int z = Mathf.RoundToInt((location.z - (VoxelSettings.MeterSizeZ * VoxelSettings.maxChunksZ / 2 + VoxelSettings.half)) / ((VoxelSettings.ChunkSizeZ / VoxelSettings.voxelsPerMeter) * VoxelSettings.maxChunksZ));
-        return new Vector3Int(x, y, z);
-    }
-
     public static Vector3Int[] GetCoords(Vector3 location) {
         Vector3Int[] result = new Vector3Int[3];
         result[0] = WorldPosToChunkCoord(location);
-        result[1] = ChunkCoordToSuperCoord(result[0]);
-        result[2] = GlobalToLocalChunkCoords(result[0]);
+        //result[1] = ChunkCoordToSuperCoord(result[0]);
+        result[1] = GlobalToLocalChunkCoords(result[0]);
         return result;
     }
 
@@ -47,8 +19,9 @@ public static class VoxelConversions {
     }
 
     public static Vector3Int GlobalToLocalChunkCoords(Vector3Int location) {
-        Vector3Int super = ChunkCoordToSuperCoord(location);
-        return GlobalToLocalChunkCoords(super, location);
+        throw new System.NotImplementedException();
+        //Vector3Int super = ChunkCoordToSuperCoord(location);
+        //return GlobalToLocalChunkCoords(super, location);
     }
 
     public static Vector3Int GlobalToLocalChunkCoords(Vector3Int super, Vector3Int location) {
@@ -62,14 +35,6 @@ public static class VoxelConversions {
         int x = chunk.x + (super.x * VoxelSettings.maxChunksX);
         int y = chunk.y + (super.y * VoxelSettings.maxChunksY_M);
         int z = chunk.z + (super.z * VoxelSettings.maxChunksZ);
-        return new Vector3Int(x, y, z);
-    }
-
-    public static Vector3Int GlobalVoxToSuperVoxCoord(Vector3Int location) {
-        Vector3Int SuperCoord = VoxelToSuper(location);
-        int x = (location.x - Mathf.Abs(SuperCoord.x * VoxelSettings.SuperSizeX));
-        int y = (location.y - Mathf.Abs(SuperCoord.y * VoxelSettings.SuperSizeY));
-        int z = (location.z - Mathf.Abs(SuperCoord.z * VoxelSettings.SuperSizeZ));
         return new Vector3Int(x, y, z);
     }
 
@@ -110,44 +75,19 @@ public static class VoxelConversions {
         return new Vector3Int(x, y, z);
     }
 
-    // Same as GlobalVoxToLocalChunkVoxCoord. Only here to show you can use it in this context.
-    public static Vector3Int SuperLocalVoxToLocalChunkVox(Vector3Int location) {
-        return GlobalVoxToLocalChunkVoxCoord(location);
-    }
-
-    // Same as GlobalVoxToLocalChunkVoxCoord. Only here to show you can use it in this context.
-    public static Vector3Int SuperLocalVoxToLocalChunkVox(Vector3Int chunk, Vector3Int location) {
-        return GlobalVoxToLocalChunkVoxCoord(chunk, location);
-    }
-
-    // Same as LocalChunkVoxToGlobalVoxCoord. Only here to show you can use it in this context.
-    public static Vector3Int LocalChunkVoxToSuperLocalVox(Vector3Int chunk, Vector3Int location) {
-        return LocalChunkVoxToGlobalVoxCoord(chunk, location);
-    }
-
-    public static Vector3Int VoxelToSuper(Vector3Int location) {
-        int x = Mathf.FloorToInt(location.x / VoxelSettings.SuperSizeX);
-        int y = Mathf.FloorToInt(location.y / VoxelSettings.SuperSizeY);
-        int z = Mathf.FloorToInt(location.z / VoxelSettings.SuperSizeZ);
-        return new Vector3Int(x, y, z);
-    }
-
-    public static Vector3Int SuperToVoxel(Vector3Int location) {
-        int x = (int)(location.x * VoxelSettings.SuperSizeX);
-        int y = (int)(location.y * VoxelSettings.SuperSizeY);
-        int z = (int)(location.z * VoxelSettings.SuperSizeZ);
-        return new Vector3Int(x, y, z);
-    }
-
     public static Vector3Int VoxelToChunk(Vector3Int location) {
-        int x = (int)(((location.x - Negative1IfNegative(location.x, 0)) / VoxelSettings.ChunkSizeX)) + Negative1IfNegative(location.x, 0);
-        int y = (int)(((location.y - Negative1IfNegative(location.y, 0)) / VoxelSettings.ChunkSizeY)) + Negative1IfNegative(location.y, 0);
-        int z = (int)(((location.z - Negative1IfNegative(location.z, 0)) / VoxelSettings.ChunkSizeZ)) + Negative1IfNegative(location.z, 0);
+        int x = (int)((location.x - Negative1IfNegative(location.x, 0)) / VoxelSettings.ChunkSizeX) + Negative1IfNegative(location.x, 0);
+        int y = (int)((location.y - Negative1IfNegative(location.y, 0)) / VoxelSettings.ChunkSizeY) + Negative1IfNegative(location.y, 0);
+        int z = (int)((location.z - Negative1IfNegative(location.z, 0)) / VoxelSettings.ChunkSizeZ) + Negative1IfNegative(location.z, 0);
         return new Vector3Int(x, y, z);
     }
 
-    public static Vector3Int ChunkToVoxel(Vector3Int location) {
-        return new Vector3Int(Mathf.RoundToInt(location.x * VoxelSettings.ChunkSizeX), Mathf.RoundToInt(location.y * VoxelSettings.ChunkSizeY), Mathf.RoundToInt(location.z * VoxelSettings.ChunkSizeZ));
+    public static Vector3Int ChunkToVoxel(Vector3Int location)
+    {
+        int x = Mathf.RoundToInt((location.x + Negative1IfNegative(location.x, 0)) * VoxelSettings.ChunkSizeX) - Negative1IfNegative(location.x, 0);
+        int y = Mathf.RoundToInt((location.y + Negative1IfNegative(location.y, 0)) * VoxelSettings.ChunkSizeY) - Negative1IfNegative(location.y, 0);
+        int z = Mathf.RoundToInt((location.z + Negative1IfNegative(location.z, 0)) * VoxelSettings.ChunkSizeZ) - Negative1IfNegative(location.z, 0);
+        return new Vector3Int(x, y, z);
     }
 
     public static Vector3 VoxelToWorld(Vector3Int location)
@@ -156,22 +96,17 @@ public static class VoxelConversions {
     }
 
     public static Vector3 VoxelToWorld(int x, int y, int z) {
-        float newX = (x / VoxelSettings.voxelsPerMeter) - VoxelSettings.half;
-        float newY = (y / VoxelSettings.voxelsPerMeter) - VoxelSettings.half;
-        float newZ = (z / VoxelSettings.voxelsPerMeter) - VoxelSettings.half;
+        float newX = (((x - Negative1IfNegative(x, 0)) / (float)VoxelSettings.voxelsPerMeter) - VoxelSettings.half) + Negative1IfNegative(x, 0);
+        float newY = (((y - Negative1IfNegative(y, 0)) / (float)VoxelSettings.voxelsPerMeter) - VoxelSettings.half) + Negative1IfNegative(y, 0);
+        float newZ = (((z - Negative1IfNegative(z, 0)) / (float)VoxelSettings.voxelsPerMeter) - VoxelSettings.half) + Negative1IfNegative(z, 0);
         return new Vector3(newX, newY, newZ);
     }
 
-    public static Vector3Int WorldToVoxel(Vector3 worldPos) {
-        float xOffset = worldPos.x + VoxelSettings.half * VoxelSettings.voxelsPerMeter;
-        float yOffset = worldPos.y + VoxelSettings.half * VoxelSettings.voxelsPerMeter;
-        float zOffset = worldPos.z + VoxelSettings.half * VoxelSettings.voxelsPerMeter;
-        int x = xOffset > 0 ? (int)(xOffset) : (int)(xOffset) - 1;
-        int y = yOffset > 0 ? (int)(yOffset) : (int)(yOffset) - 1;
-        int z = zOffset > 0 ? (int)(zOffset) : (int)(zOffset) - 1;
-        //int x = (int)((worldPos.x + (VoxelSettings.half * GetEditValue(worldPos.x))) * VoxelSettings.voxelsPerMeter);
-        //int y = (int)((worldPos.y + (VoxelSettings.half * GetEditValue(worldPos.y))) * VoxelSettings.voxelsPerMeter);
-        //int z = (int)((worldPos.z + (VoxelSettings.half * GetEditValue(worldPos.z))) * VoxelSettings.voxelsPerMeter);
+    public static Vector3Int WorldToVoxel(Vector3 worldPos)
+    {
+        int x = (int)((worldPos.x + Negative1IfNegative((int)worldPos.x, 0)) + VoxelSettings.half * VoxelSettings.voxelsPerMeter) - Negative1IfNegative((int)worldPos.x, 0);
+        int y = (int)((worldPos.y + Negative1IfNegative((int)worldPos.y, 0)) + VoxelSettings.half * VoxelSettings.voxelsPerMeter) - Negative1IfNegative((int)worldPos.y, 0);
+        int z = (int)((worldPos.z + Negative1IfNegative((int)worldPos.z, 0)) + VoxelSettings.half * VoxelSettings.voxelsPerMeter) - Negative1IfNegative((int)worldPos.z, 0);
         return new Vector3Int(x, y, z);
     }
 

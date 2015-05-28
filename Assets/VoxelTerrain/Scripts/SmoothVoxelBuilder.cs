@@ -33,7 +33,7 @@ public class SmoothVoxelBuilder : IVoxelBuilder {
     public Neighbor[] neighbors;
     public bool Initialized;
     public bool deactivated;
-    public Dictionary<Vector2Int ,Vector3Int> SurfacePoints;
+    public Dictionary<Vector2Int, Vector3Int> surfacePoints;
     #region edgeTable
     static int[] edgeTable = new int[256]
     {0x0 , 0x109, 0x203, 0x30a, 0x406, 0x50f, 0x605, 0x70c,
@@ -672,7 +672,7 @@ public class SmoothVoxelBuilder : IVoxelBuilder {
         {
             float surfaceHeight = GetSurfaceHeight(LocalPosition.x, LocalPosition.z) + VoxelSettings.groundOffset;
             result = surfaceHeight - globalLocation.y;
-            bool surface = (result < 1 && result > -1);
+            bool surface = (result > 0);
 
             float noiseVal = Noise(caveModule, globalLocation.x, globalLocation.y, globalLocation.z, 16.0*VoxelsPerMeter,
                 17.0, 1.0);
@@ -682,9 +682,15 @@ public class SmoothVoxelBuilder : IVoxelBuilder {
                 surface = false;
             }
 
-            if (surface && !SurfacePoints.ContainsKey(new Vector2Int(globalLocation.x, globalLocation.z)))
-                SurfacePoints.Add(new Vector2Int(globalLocation.x, globalLocation.z), globalLocation);
-                
+            /*if (globalLocation.y == 1)
+                result = 1;
+            else
+                result = 0;
+            surface = (result > 0);*/
+
+            
+            if (surface && !surfacePoints.ContainsKey(new Vector2Int(globalLocation.x, globalLocation.z)))
+                surfacePoints.Add(new Vector2Int(globalLocation.x, globalLocation.z), globalLocation);
         }
         catch (Exception e)
         {
@@ -696,7 +702,7 @@ public class SmoothVoxelBuilder : IVoxelBuilder {
 
     public Vector3Int[] GetSurfacePoints()
     {
-        return new List<Vector3Int>(SurfacePoints.Values).ToArray();
+        return new List<Vector3Int>(surfacePoints.Values).ToArray();
     }
 
     public void MarkAsSet(int _x, int _y, int _z)
@@ -888,7 +894,7 @@ public class SmoothVoxelBuilder : IVoxelBuilder {
             new Vector3(sideLength,sideLength,0),
             new Vector3(0,sideLength,0),
         };
-        SurfacePoints = new Dictionary<Vector2Int, Vector3>();
+        surfacePoints = new Dictionary<Vector2Int, Vector3Int>();
         AllocateBlockArray(ChunkSizeX, ChunkSizeY, ChunkSizeZ);
         SetSurroundingChunks();
         Initialized = true;

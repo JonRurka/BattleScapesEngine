@@ -18,11 +18,11 @@ public class Chunk : MonoBehaviour {
         }
     }
 
-    public Vector3Int ChunkPosition;
+    public Vector3Int chunkPosition;
     public IVoxelBuilder builder;
-    public SmoothVoxelBuilder BuilderInstance;
+    public SmoothVoxelBuilder builderInstance;
     public IPageController pageController;
-    public List<BlockChange> EditQueue;
+    public List<BlockChange> editQueue;
     public GameObject grassPrefab;
     public int disappearDistance = VoxelSettings.radius;
     public int maxGrassDistance = 3;
@@ -30,52 +30,42 @@ public class Chunk : MonoBehaviour {
     public int size = 0;
     public int vertSize = 0;
     public int triSize = 0;
-    public List<Vector3Int> Surface; 
+    public List<Vector3Int> surface;
+    public List<Vector2Int> surface2D; 
 
     public bool Generated {
-        get { return generated; }
+        get { return _generated; }
     }
 
     MeshFilter _filter;
     MeshRenderer _renderer;
     MeshCollider _collider;
-    GameObject player;
+    GameObject _player;
 
-    object lockObj;
+    object _lockObj;
 
-    ManualResetEvent resetEvent = new ManualResetEvent(false);
+    ManualResetEvent _resetEvent = new ManualResetEvent(false);
 
-    bool enableTest = false;
-    bool generated = false;
-    bool rendered = false;
-    bool grassEnabled = false;
-    bool destroyed = false;
+    bool _enableTest = false;
+    bool _generated = false;
+    bool _rendered = false;
+    bool _grassEnabled = false;
+    bool _destroyed = false;
 
-    List<GameObject> grassList = new List<GameObject>();
+    List<GameObject> _grassList = new List<GameObject>();
 
 	// Use this for initialization
 	void Start () {
-        EditQueue = new List<BlockChange>();
-        lockObj = new object();
-        Surface = new List<Vector3Int>();
+        editQueue = new List<BlockChange>();
+        _lockObj = new object();
+        surface = new List<Vector3Int>();
 	}
 	
 	// Update is called once per frame
 	void Update () {
 
-        if (rendered && !destroyed)
+        if (_rendered && !_destroyed)
         {
-            if (Vector3.Distance(TerrainController.Instance.newPlayerChunkPos, ChunkPosition) > disappearDistance)
-            {
-                destroyed = true;
-                Destroy(gameObject, 1);
-                Loom.QueueAsyncTask(TerrainController.WorldThreadName, () =>
-                {
-                    TerrainController.Chunks.Remove(ChunkPosition);
-                    Close();
-                });
-                return;
-            }
             /*if (!grassEnabled && Vector3.Distance(TerrainController.Instance.newPlayerChunkPos, ChunkPosition) < maxGrassDistance)
             {
                 grassEnabled = true;
@@ -89,14 +79,14 @@ public class Chunk : MonoBehaviour {
                 grassList.Clear();
             }*/
 
-            if (EditQueue.Count > 0)
+            if (editQueue.Count > 0)
             {
-                List<BlockChange> EditQueueCopy = new List<BlockChange>(EditQueue);
-                EditQueue.Clear();
+                List<BlockChange> EditQueueCopy = new List<BlockChange>(editQueue);
+                editQueue.Clear();
                 Loom.QueueAsyncTask(TerrainController.setBlockThreadName, () =>
                 {
 
-                    lock (lockObj)
+                    lock (_lockObj)
                     {
                         List<Vector3Int> updateChunks = new List<Vector3Int>();
                         foreach (BlockChange change in EditQueueCopy)
@@ -105,36 +95,36 @@ public class Chunk : MonoBehaviour {
                             byte type = change.type;
                             if (position.x == 0)
                             {
-                                if (!updateChunks.Contains(new Vector3Int(ChunkPosition.x - 1, ChunkPosition.y, ChunkPosition.z)))
-                                    updateChunks.Add(new Vector3Int(ChunkPosition.x - 1, ChunkPosition.y, ChunkPosition.z));
+                                if (!updateChunks.Contains(new Vector3Int(chunkPosition.x - 1, chunkPosition.y, chunkPosition.z)))
+                                    updateChunks.Add(new Vector3Int(chunkPosition.x - 1, chunkPosition.y, chunkPosition.z));
                             }
                             if (position.x == VoxelSettings.ChunkSizeX - 1)
                             {
-                                if (!updateChunks.Contains(new Vector3Int(ChunkPosition.x + 1, ChunkPosition.y, ChunkPosition.z)))
-                                    updateChunks.Add(new Vector3Int(ChunkPosition.x + 1, ChunkPosition.y, ChunkPosition.z));
+                                if (!updateChunks.Contains(new Vector3Int(chunkPosition.x + 1, chunkPosition.y, chunkPosition.z)))
+                                    updateChunks.Add(new Vector3Int(chunkPosition.x + 1, chunkPosition.y, chunkPosition.z));
                             }
 
                             if (position.y == 0)
                             {
-                                if (!updateChunks.Contains(new Vector3Int(ChunkPosition.x, ChunkPosition.y - 1, ChunkPosition.z)))
-                                    updateChunks.Add(new Vector3Int(ChunkPosition.x, ChunkPosition.y - 1, ChunkPosition.z));
+                                if (!updateChunks.Contains(new Vector3Int(chunkPosition.x, chunkPosition.y - 1, chunkPosition.z)))
+                                    updateChunks.Add(new Vector3Int(chunkPosition.x, chunkPosition.y - 1, chunkPosition.z));
 
                             }
                             if (position.y == VoxelSettings.ChunkSizeY - 1)
                             {
-                                if (!updateChunks.Contains(new Vector3Int(ChunkPosition.x, ChunkPosition.y + 1, ChunkPosition.z)))
-                                    updateChunks.Add(new Vector3Int(ChunkPosition.x, ChunkPosition.y + 1, ChunkPosition.z));
+                                if (!updateChunks.Contains(new Vector3Int(chunkPosition.x, chunkPosition.y + 1, chunkPosition.z)))
+                                    updateChunks.Add(new Vector3Int(chunkPosition.x, chunkPosition.y + 1, chunkPosition.z));
                             }
 
                             if (position.z == 0)
                             {
-                                if (!updateChunks.Contains(new Vector3Int(ChunkPosition.x, ChunkPosition.y, ChunkPosition.z - 1)))
-                                    updateChunks.Add(new Vector3Int(ChunkPosition.x, ChunkPosition.y, ChunkPosition.z - 1));
+                                if (!updateChunks.Contains(new Vector3Int(chunkPosition.x, chunkPosition.y, chunkPosition.z - 1)))
+                                    updateChunks.Add(new Vector3Int(chunkPosition.x, chunkPosition.y, chunkPosition.z - 1));
                             }
                             if (position.z == VoxelSettings.ChunkSizeZ - 1)
                             {
-                                if (!updateChunks.Contains(new Vector3Int(ChunkPosition.x, ChunkPosition.y, ChunkPosition.z + 1)))
-                                    updateChunks.Add(new Vector3Int(ChunkPosition.x, ChunkPosition.y, ChunkPosition.z + 1));
+                                if (!updateChunks.Contains(new Vector3Int(chunkPosition.x, chunkPosition.y, chunkPosition.z + 1)))
+                                    updateChunks.Add(new Vector3Int(chunkPosition.x, chunkPosition.y, chunkPosition.z + 1));
                             }
                             builder.SetBlock(position.x, position.y, position.z, new Block(type));
                         }
@@ -151,28 +141,38 @@ public class Chunk : MonoBehaviour {
 
     public void SpawnGrass()
     {
-        Vector3Int[] surfacePoints = BuilderInstance.GetSurfacePoints();
-        System.Random rand = new System.Random(VoxelSettings.seed);
-        int maxGrass = Mathf.RoundToInt((float)grassPerMeter / (float)VoxelSettings.voxelsPerMeter);
+        surface = new List<Vector3Int>(builderInstance.GetSurfacePoints());
+        for (int i = 0; i < surface.Count; i++)
+        {
+            //GameObject grassObj = (GameObject)Instantiate(TerrainController.Instance.grassPrefab, new Vector3(surface[i].x, 0, surface[i].z),
+            //    Quaternion.identity);
+            //grassObj.transform.parent = transform;
+        }
+
+
+    //TerrainController.Instance.SetSurfacePoints(surface.ToArray());
+        //Vector3Int[] surfacePoints = builderInstance.GetSurfacePoints();
+        //System.Random rand = new System.Random(VoxelSettings.seed);
+        /*//int maxGrass = Mathf.RoundToInt((float)grassPerMeter / (float)VoxelSettings.voxelsPerMeter);
         for (int i = 0; i < surfacePoints.Length; i++)
         {
 
-            /*for (int j = 0; j < maxGrass; j++)
+            for (int j = 0; j < maxGrass; j++)
             {
                 //Vector3 pos = new Vector3((float)rand.Next(-100, 100) / 10f / VoxelSettings.voxelsPerMeter, 0, (float)rand.Next(-100, 100) / 10f / VoxelSettings.voxelsPerMeter);
                 //GameObject grassObj = (GameObject)Instantiate(grassPrefab, pos, Quaternion.identity);
                 //grassObj.transform.parent = transform;
                 //grassList.Add(grassObj);
-            }*/
-        }
-        Debug.LogFormat("surface points: {0}", surfacePoints.Length);
-        Debug.LogFormat("Grass per point: {0}", maxGrass);
-        Debug.LogFormat("Spawned {0} grass.", grassList.Count);
+            }
+        }*/
+        //Debug.LogFormat("surface points: {0}", surfacePoints.Length);
+        //Debug.LogFormat("Grass per point: {0}", maxGrass);
+        //Debug.LogFormat("Spawned {0} grass.", _grassList.Count);
     }
 
     public void EditNextFrame(BlockChange[] changes)
     {
-        EditQueue.AddRange(changes);
+        editQueue.AddRange(changes);
     }
 
     public void EditNextFrame(BlockChange change)
@@ -181,35 +181,35 @@ public class Chunk : MonoBehaviour {
         byte type = change.type;
         if (position.x >= 0 && position.x < VoxelSettings.ChunkSizeX && position.y >= 0 && position.y < VoxelSettings.ChunkSizeY && position.z >= 0 && position.z < VoxelSettings.ChunkSizeZ)
         {
-            EditQueue.Add(new BlockChange(position, type));
+            editQueue.Add(new BlockChange(position, type));
         }
         else
         {
-            SafeDebug.LogError(string.Format("Out of Bounds: chunk: {0}, localVoxel: {1}, Function: EditNextFrame", ChunkPosition, position));
+            SafeDebug.LogError(string.Format("Out of Bounds: chunk: {0}, localVoxel: {1}, Function: EditNextFrame", chunkPosition, position));
         }
     }
 
     public void Init(Vector3Int chunkPos, IPageController pageController) {
-        ChunkPosition = chunkPos;
+        chunkPosition = chunkPos;
         this.pageController = pageController;
         transform.position = VoxelConversions.ChunkCoordToWorld(chunkPos);
         _renderer = gameObject.GetComponent<MeshRenderer>();
         _filter = gameObject.GetComponent<MeshFilter>();
         _collider = gameObject.GetComponent<MeshCollider>();
         _renderer.material.SetTexture("_MainTex", TerrainController.Instance.textureAtlas);
-        player = TerrainController.Instance.player;
+        _player = TerrainController.Instance.player;
         createChunkBuilder();
     }
 
     public void createChunkBuilder() {
         builder = new SmoothVoxelBuilder(TerrainController.Instance,
-                                    ChunkPosition,
+                                    chunkPosition,
                                     VoxelSettings.voxelsPerMeter,
                                     VoxelSettings.MeterSizeX,
                                     VoxelSettings.MeterSizeY,
                                     VoxelSettings.MeterSizeZ);
         builder.SetBlockTypes(TerrainController.Instance.BlocksArray, TerrainController.Instance.AtlasUvs);
-        BuilderInstance = (SmoothVoxelBuilder)builder;
+        builderInstance = (SmoothVoxelBuilder)builder;
     }
 
     public void DebugFill(byte type)
@@ -238,7 +238,7 @@ public class Chunk : MonoBehaviour {
                                                  VoxelSettings.caveDensity,
                                                  VoxelSettings.groundOffset,
                                                  VoxelSettings.grassOffset);
-        generated = true;
+        _generated = true;
         return result;
     }
 
@@ -250,7 +250,7 @@ public class Chunk : MonoBehaviour {
                                  VoxelSettings.caveDensity,
                                  VoxelSettings.groundOffset,
                                  VoxelSettings.grassOffset );
-        generated = true;
+        _generated = true;
         return result;
     }
 
@@ -277,10 +277,9 @@ public class Chunk : MonoBehaviour {
                 meshData.triangles = null;
                 meshData.UVs = null;
 
-                if (!rendered)
-                    Surface = new List<Vector3Int>(BuilderInstance.GetSurfacePoints());
+                SpawnGrass();
                 
-                rendered = true;
+                _rendered = true;
             }
         });
     }
@@ -299,7 +298,7 @@ public class Chunk : MonoBehaviour {
     {
         builder.Dispose();
         builder = null;
-        BuilderInstance = null;
+        builderInstance = null;
     }
 
     private MeshData RenderChunk(bool renderOnly) {
